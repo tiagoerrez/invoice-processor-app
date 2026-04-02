@@ -23,7 +23,7 @@ with st.sidebar:
     
     page_selection = st.radio(
         "TOOLS",
-        ["Process Files", "Lookup Data", "Job History"]
+        ["Process Files", "Job History"]
     )
     st.info("App by Santiago.")
 
@@ -132,13 +132,6 @@ def show_process_files_page():
             with dl_col4:
                 st.download_button("Download Estimate DATEV", estimate_datev_csv, "estimate_datev_export.csv", "text/csv", use_container_width=True, type="primary")
 
-def show_lookup_data_page():
-    st.title("📖 Lookup Data")
-    st.markdown("This table contains the mapping from employee names to their cost centers.")
-    lookup_dict = st.secrets["lookup_data"]
-    df = pd.DataFrame(lookup_dict)
-    st.dataframe(df, use_container_width=True)
-
 def show_job_history_page():
     st.title("🕒 Job History (Current Session)")
     st.markdown("This shows a history of files processed since opening the app.")
@@ -151,7 +144,5 @@ def show_job_history_page():
 # --- Main App Logic ---
 if page_selection == "Process Files":
     show_process_files_page()
-elif page_selection == "Lookup Data":
-    show_lookup_data_page()
 elif page_selection == "Job History":
     show_job_history_page()
