@@ -71,8 +71,8 @@ def load_data(pre_file: str, re_file: str, lookup_data: List[Dict]) -> Tuple[pd.
     
     # 6. Perform final column selection
     columns = [
-        'Invoice number', 'Name', 'Type', 'Period', 'Country', 'Start date',
-        'Payslip FX Rate', 'Base Salary [EUR]', 'Contribution [EUR]', 
+        'Invoice number', 'Name', 'Type', 'Period', 'Issue date', 'Country', 'Start date',
+        'Payslip FX Rate', 'Base Salary [EUR]', 'Contribution [EUR]',
         'Payslip Benefits [EUR]', 'Expenses [EUR]', 'Incentives [EUR]',
         'Other Benefits [EUR]', 'Total [EUR]', 'Kostenstelle I',
         'Kostenstellenbezeichnung I', 'Kostenstelle II', 'Kostenstellenbezeichnung II',
@@ -96,7 +96,8 @@ def process_group(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Data
         [
         "Invoice number",
         "Name",
-        "Period", 
+        "Period",
+        "Issue date",
         "Kostenstelle I",
         "Kostenstellenbezeichnung I",
         "Kostenstelle II",
@@ -112,13 +113,14 @@ def process_group(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Data
     estimate = df[df["Type"].isin(estimate_types)].copy()
 
     # Create a summary of travel expenses per invoice/period
-    expenses_summary = estimate.groupby(["Invoice number", "Period"])["Expenses [EUR]"].sum().reset_index()
+    expenses_summary = estimate.groupby(["Invoice number", "Period", "Issue date"])["Expenses [EUR]"].sum().reset_index()
     expenses_summary = expenses_summary[expenses_summary["Expenses [EUR]"] != 0]
 
     # Step 1: Group data first to get the NET amounts for each employee
     net_estimate = estimate.groupby(
         ['Invoice number', 'Name', 'Period'], dropna=False
     ).agg({
+        'Issue date': 'first',
         'Total [EUR]': 'sum',
         'Incentives [EUR]': 'sum',
         'Expenses [EUR]': 'sum',
@@ -189,7 +191,7 @@ def prepare_datev_row(row, kostenstelle_type='I'):
         return None
     
     # logic to conditionally add "bonus" to booking text
-    buchungstext = f"{pd.to_datetime(row['Period']).strftime('%m/%y')} {row['Name']}"
+    buchungstext = f"Remote {pd.to_datetime(row['Period']).strftime('%m/%y')} {row['Name']}"
     if kostenstelle_type == 'II':
         # Check if description exists and doesn't contain 'Development'
         desc = row.get('Kostenstellenbezeichnung II', '')
@@ -202,7 +204,7 @@ def prepare_datev_row(row, kostenstelle_type='I'):
         'Konto': 4121,
         'Gegenkonto (ohne BU-Schlüssel)': 71707,
         'BU-Schlüssel': 94,
-        'Belegdatum': format_period(row['Period']),
+        'Belegdatum': format_period(row['Issue date']),
         'Belegfeld 1': row['Invoice number'].replace('#', ''),
         'Buchungstext': buchungstext,
         f'KOST1 - Kostenstelle': row[f'Kostenstelle {kostenstelle_type}'],
@@ -239,9 +241,9 @@ def process_datev_export(estimate_merged, expenses_summary=None):
                 'Konto': 4121,
                 'Gegenkonto (ohne BU-Schlüssel)': 71707,
                 'BU-Schlüssel': 94,
-                'Belegdatum': format_period(expense_row['Period']),
+                'Belegdatum': format_period(expense_row['Issue date']),
                 'Belegfeld 1': str(expense_row['Invoice number']).replace('#', ''),
-                'Buchungstext': 'Travel Expenses',
+                'Buchungstext': 'Remote Travel Expenses',
                 'KOST1 - Kostenstelle': 410, # Assign to the specified cost center
                 'Steuersatz': 19
             }
